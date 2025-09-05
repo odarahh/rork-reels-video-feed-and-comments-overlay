@@ -86,14 +86,61 @@ interface ReelOverlayProps {
   fadeAnim: Animated.Value;
 }
 
+interface FloatingHeart {
+  id: string;
+  animValue: Animated.Value;
+}
+
 const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likes);
+  const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
+  const buttonScaleAnim = useRef(new Animated.Value(1)).current;
+
+  const createFloatingHeart = useCallback(() => {
+    const heartId = Date.now().toString();
+    const animValue = new Animated.Value(0);
+    
+    const newHeart: FloatingHeart = {
+      id: heartId,
+      animValue,
+    };
+    
+    setFloatingHearts(prev => [...prev, newHeart]);
+    
+    Animated.timing(animValue, {
+      toValue: 1,
+      duration: 1500,
+      useNativeDriver: true,
+    }).start(() => {
+      setFloatingHearts(prev => prev.filter(heart => heart.id !== heartId));
+    });
+  }, []);
 
   const handleLike = useCallback(() => {
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-  }, [isLiked]);
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    setLikeCount(prev => newLikedState ? prev + 1 : prev - 1);
+    
+    // Button scale animation
+    Animated.sequence([
+      Animated.timing(buttonScaleAnim, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScaleAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Create floating heart animation only when liking
+    if (newLikedState) {
+      createFloatingHeart();
+    }
+  }, [isLiked, buttonScaleAnim, createFloatingHeart]);
 
   return (
     <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
@@ -104,18 +151,60 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim }) => {
       
       {/* Right side interaction buttons */}
       <View style={styles.rightActions}>
-        <TouchableOpacity 
-          style={styles.actionButton} 
-          onPress={handleLike}
-          activeOpacity={0.7}
-        >
-          <Heart 
-            size={28} 
-            color={isLiked ? "#ff3040" : "white"} 
-            fill={isLiked ? "#ff3040" : "transparent"}
-          />
-          <Text style={styles.actionText}>{likeCount}</Text>
-        </TouchableOpacity>
+        <View style={styles.likeButtonContainer}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleLike}
+            activeOpacity={0.7}
+          >
+            <Animated.View style={[styles.heartButton, { transform: [{ scale: buttonScaleAnim }] }]}>
+              <Heart 
+                size={28} 
+                color={isLiked ? "#ff3040" : "white"} 
+                fill={isLiked ? "#ff3040" : "transparent"}
+              />
+            </Animated.View>
+            <Text style={styles.actionText}>{likeCount}</Text>
+          </TouchableOpacity>
+          
+          {/* Floating hearts animation */}
+          {floatingHearts.map((heart) => (
+            <Animated.View
+              key={heart.id}
+              style={[
+                styles.floatingHeart,
+                {
+                  opacity: heart.animValue.interpolate({
+                    inputRange: [0, 0.2, 0.8, 1],
+                    outputRange: [0, 1, 1, 0],
+                  }),
+                  transform: [
+                    {
+                      translateY: heart.animValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -80],
+                      }),
+                    },
+                    {
+                      translateX: heart.animValue.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0, Math.random() * 20 - 10, Math.random() * 30 - 15],
+                      }),
+                    },
+                    {
+                      scale: heart.animValue.interpolate({
+                        inputRange: [0, 0.3, 0.7, 1],
+                        outputRange: [0, 1.2, 1, 0.8],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Heart size={20} color="#ff3040" fill="#ff3040" />
+            </Animated.View>
+          ))}
+        </View>
 
         <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
           <MessageCircle size={28} color="white" />
@@ -277,9 +366,27 @@ const styles = StyleSheet.create({
     bottom: 120,
     alignItems: 'center',
   },
+  likeButtonContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   actionButton: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  heartButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingHeart: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
   },
   actionText: {
     color: 'white',
