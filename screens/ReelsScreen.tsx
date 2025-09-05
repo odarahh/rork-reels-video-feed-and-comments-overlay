@@ -15,6 +15,7 @@ import { Heart, MessageCircle, Share } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { reelsData } from '@/mocks/reelsData';
 import type { ReelItem } from '@/types/reels';
+import CommentsModal from '@/components/CommentsModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -84,6 +85,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive }) => {
 interface ReelOverlayProps {
   item: ReelItem;
   fadeAnim: Animated.Value;
+  onOpenComments: () => void;
 }
 
 interface FloatingHeart {
@@ -91,7 +93,7 @@ interface FloatingHeart {
   animValue: Animated.Value;
 }
 
-const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim }) => {
+const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim, onOpenComments }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likes);
   const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
@@ -206,7 +208,7 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim }) => {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.actionButton} onPress={onOpenComments} activeOpacity={0.7}>
           <MessageCircle size={28} color="white" />
           <Text style={styles.actionText}>{item.comments}</Text>
         </TouchableOpacity>
@@ -246,6 +248,8 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim }) => {
 
 const ReelsScreen: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [selectedReelId, setSelectedReelId] = useState<string>('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -273,6 +277,16 @@ const ReelsScreen: React.FC = () => {
     }
   }, [currentIndex, fadeAnim]);
 
+  const handleOpenComments = useCallback((reelId: string) => {
+    setSelectedReelId(reelId);
+    setCommentsModalVisible(true);
+  }, []);
+
+  const handleCloseComments = useCallback(() => {
+    setCommentsModalVisible(false);
+    setSelectedReelId('');
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <ScrollView
@@ -291,10 +305,20 @@ const ReelsScreen: React.FC = () => {
               item={item} 
               isActive={index === currentIndex} 
             />
-            <ReelOverlay item={item} fadeAnim={fadeAnim} />
+            <ReelOverlay 
+              item={item} 
+              fadeAnim={fadeAnim} 
+              onOpenComments={() => handleOpenComments(item.id)}
+            />
           </View>
         ))}
       </ScrollView>
+      
+      <CommentsModal
+        visible={commentsModalVisible}
+        onClose={handleCloseComments}
+        reelId={selectedReelId}
+      />
     </SafeAreaView>
   );
 };

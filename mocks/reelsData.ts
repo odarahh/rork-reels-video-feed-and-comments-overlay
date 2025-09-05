@@ -1,4 +1,4 @@
-import type { ReelItem } from '@/types/reels';
+import type { ReelItem, Comment } from '@/types/reels';
 
 export const reelsData: ReelItem[] = [
   {
@@ -61,4 +61,91 @@ export const reelsData: ReelItem[] = [
     hashtags: ['treinamento', 'educação', 'comportamento', 'dicas'],
     duration: '0:41'
   }
+];
+
+export const commentsData: Record<string, Comment[]> = {
+  '1': [
+    {
+      id: 'c1',
+      username: 'Jéssica Soares',
+      text: 'Já sabia algumas coisas sobre isso, mas aprendi muito com essa aula.',
+      date: '21 de novembro',
+      likes: 2,
+    },
+    {
+      id: 'c2',
+      username: 'André Lima',
+      text: 'Fiquei com uma dúvida..',
+      date: '21 de novembro',
+      likes: 0,
+    },
+    {
+      id: 'c3',
+      username: 'Maria Santos',
+      text: 'Conteúdo muito útil! Obrigada por compartilhar 🙏',
+      date: '20 de novembro',
+      likes: 5,
+    },
+  ],
+  '2': [
+    {
+      id: 'c4',
+      username: 'Carlos Oliveira',
+      text: 'Que fofo! Meu cachorro faz a mesma coisa 😍',
+      date: '22 de novembro',
+      likes: 8,
+    },
+    {
+      id: 'c5',
+      username: 'Ana Paula',
+      text: 'Adorei o vídeo! Muito inspirador ❤️',
+      date: '21 de novembro',
+      likes: 3,
+    },
+  ],
+  '3': [
+    {
+      id: 'c6',
+      username: 'Dr. Roberto',
+      text: 'Excelente dica! Como veterinário, confirmo a importância.',
+      date: '23 de novembro',
+      likes: 12,
+    },
+  ],
+  '4': [
+    {
+      id: 'c7',
+      username: 'Família Silva',
+      text: 'Acabamos de adotar um cachorrinho! Muito felizes 🐕',
+      date: '22 de novembro',
+      likes: 15,
+    },
+    {
+      id: 'c8',
+      username: 'Pedro Costa',
+      text: 'Trabalho incrível que vocês fazem! Parabéns 👏',
+      date: '21 de novembro',
+      likes: 7,
+    },
+  ],
+  '5': [
+    {
+      id: 'c9',
+      username: 'Luciana Mendes',
+      text: 'Vou tentar essas dicas com meu Golden! Obrigada',
+      date: '23 de novembro',
+      likes: 4,
+    },
+  ],
+};
+
+export const reactionEmojis = [
+  { emoji: '👍', label: 'Curtir' },
+  { emoji: '😊', label: 'Feliz' },
+  { emoji: '❤️', label: 'Amor' },
+  { emoji: '🔥', label: 'Incrível' },
+  { emoji: '😂', label: 'Engraçado' },
+  { emoji: '👏', label: 'Aplaudir' },
+  { emoji: '😍', label: 'Apaixonado' },
+  { emoji: '🙌', label: 'Celebrar' },
 ];

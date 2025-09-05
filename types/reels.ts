@@ -10,3 +10,17 @@ export interface ReelItem {
   hashtags: string[];
   duration: string;
 }
+
+export interface Comment {
+  id: string;
+  username: string;
+  text: string;
+  date: string;
+  likes: number;
+  avatar?: string;
+}
+
+export interface ReactionEmoji {
+  emoji: string;
+  label: string;
+}
