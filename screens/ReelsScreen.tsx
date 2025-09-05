@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Heart, MessageCircle, Share } from 'lucide-react-native';
+import { Heart, MessageCircle, Share, Volume2, VolumeX } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Slider from '@react-native-community/slider';
 import { reelsData } from '@/mocks/reelsData';
 import type { ReelItem } from '@/types/reels';
 import CommentsModal from '@/components/CommentsModal';
@@ -23,9 +24,11 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface VideoPlayerProps {
   item: ReelItem;
   isActive: boolean;
+  volume: number;
+  isMuted: boolean;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive, volume, isMuted }) => {
   const videoRef = useRef<Video>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
@@ -69,7 +72,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive }) => {
         resizeMode={ResizeMode.COVER}
         shouldPlay={Platform.OS === 'web' ? (isActive && hasUserInteracted) : isActive}
         isLooping
-        isMuted={Platform.OS === 'web' ? true : false}
+        isMuted={Platform.OS === 'web' ? true : isMuted}
+        volume={volume}
       />
       {Platform.OS === 'web' && !hasUserInteracted && isActive && (
         <View style={styles.playPrompt}>
@@ -88,6 +92,10 @@ interface ReelOverlayProps {
   fadeAnim: Animated.Value;
   onOpenComments: () => void;
   onOpenShare: () => void;
+  volume: number;
+  isMuted: boolean;
+  onVolumeChange: (volume: number) => void;
+  onToggleMute: () => void;
 }
 
 interface FloatingHeart {
@@ -95,11 +103,23 @@ interface FloatingHeart {
   animValue: Animated.Value;
 }
 
-const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim, onOpenComments, onOpenShare }) => {
+const ReelOverlay: React.FC<ReelOverlayProps> = ({ 
+  item, 
+  fadeAnim, 
+  onOpenComments, 
+  onOpenShare, 
+  volume, 
+  isMuted, 
+  onVolumeChange, 
+  onToggleMute 
+}) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likes);
   const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
+  const volumeSliderAnim = useRef(new Animated.Value(0)).current;
+  const volumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const createFloatingHeart = useCallback(() => {
     const heartId = Date.now().toString();
@@ -146,6 +166,66 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim, onOpenComment
     }
   }, [isLiked, buttonScaleAnim, createFloatingHeart]);
 
+  const handleVolumePress = useCallback(() => {
+    if (Platform.OS === 'web') {
+      onToggleMute();
+      return;
+    }
+    
+    setShowVolumeSlider(true);
+    
+    // Clear existing timeout
+    if (volumeTimeoutRef.current) {
+      clearTimeout(volumeTimeoutRef.current);
+    }
+    
+    // Animate slider in
+    Animated.timing(volumeSliderAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    
+    // Hide slider after 3 seconds of inactivity
+    volumeTimeoutRef.current = setTimeout(() => {
+      Animated.timing(volumeSliderAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowVolumeSlider(false);
+      });
+    }, 3000);
+  }, [onToggleMute, volumeSliderAnim]);
+
+  const handleSliderChange = useCallback((value: number) => {
+    onVolumeChange(value);
+    
+    // Reset timeout when user interacts with slider
+    if (volumeTimeoutRef.current) {
+      clearTimeout(volumeTimeoutRef.current);
+    }
+    
+    volumeTimeoutRef.current = setTimeout(() => {
+      Animated.timing(volumeSliderAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowVolumeSlider(false);
+      });
+    }, 3000);
+  }, [onVolumeChange, volumeSliderAnim]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (volumeTimeoutRef.current) {
+        clearTimeout(volumeTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
       <LinearGradient
@@ -153,6 +233,49 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({ item, fadeAnim, onOpenComment
         style={styles.gradient}
       />
       
+      {/* Volume Control */}
+      <View style={styles.volumeControl}>
+        <TouchableOpacity 
+          style={styles.volumeButton} 
+          onPress={handleVolumePress}
+          activeOpacity={0.7}
+        >
+          {isMuted || volume === 0 ? (
+            <VolumeX size={24} color="white" />
+          ) : (
+            <Volume2 size={24} color="white" />
+          )}
+        </TouchableOpacity>
+        
+        {showVolumeSlider && Platform.OS !== 'web' && (
+          <Animated.View 
+            style={[
+              styles.volumeSliderContainer,
+              {
+                opacity: volumeSliderAnim,
+                transform: [{
+                  translateX: volumeSliderAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-100, 0],
+                  })
+                }]
+              }
+            ]}
+          >
+            <Slider
+              style={styles.volumeSlider}
+              minimumValue={0}
+              maximumValue={1}
+              value={volume}
+              onValueChange={handleSliderChange}
+              minimumTrackTintColor="#ffffff"
+              maximumTrackTintColor="rgba(255,255,255,0.3)"
+              thumbTintColor="#ffffff"
+            />
+          </Animated.View>
+        )}
+      </View>
+
       {/* Right side interaction buttons */}
       <View style={styles.rightActions}>
         <View style={styles.likeButtonContainer}>
@@ -253,6 +376,8 @@ const ReelsScreen: React.FC = () => {
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedReelId, setSelectedReelId] = useState<string>('');
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(Platform.OS === 'web');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -300,6 +425,15 @@ const ReelsScreen: React.FC = () => {
     setSelectedReelId('');
   }, []);
 
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  }, []);
+
+  const handleToggleMute = useCallback(() => {
+    setIsMuted(prev => !prev);
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <ScrollView
@@ -316,13 +450,19 @@ const ReelsScreen: React.FC = () => {
           <View key={item.id} style={styles.reelContainer}>
             <VideoPlayer 
               item={item} 
-              isActive={index === currentIndex} 
+              isActive={index === currentIndex}
+              volume={volume}
+              isMuted={isMuted}
             />
             <ReelOverlay 
               item={item} 
               fadeAnim={fadeAnim} 
               onOpenComments={() => handleOpenComments(item.id)}
               onOpenShare={() => handleOpenShare(item.id)}
+              volume={volume}
+              isMuted={isMuted}
+              onVolumeChange={handleVolumeChange}
+              onToggleMute={handleToggleMute}
             />
           </View>
         ))}
@@ -492,6 +632,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginRight: 8,
   },
+  volumeControl: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  volumeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  volumeSliderContainer: {
+    marginLeft: 12,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  volumeSlider: {
+    width: 100,
+    height: 20,
+  },
+
 });
 
 export default ReelsScreen;
