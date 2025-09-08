@@ -10,7 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { Copy, Zap } from 'lucide-react-native';
+import { Copy } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 
@@ -101,10 +101,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ visible, onClose, reelId }) => 
     }
   };
 
-  const handleQuickShare = () => {
-    Alert.alert('Quick Share', 'Funcionalidade de compartilhamento rápido em desenvolvimento.');
-    onClose();
-  };
+
 
   const shareOptions: ShareOption[] = [
     {
@@ -224,14 +221,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ visible, onClose, reelId }) => 
                 <Text style={styles.actionButtonText}>Copiar link</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleQuickShare}
-                activeOpacity={0.7}
-              >
-                <Zap size={20} color="white" style={styles.actionButtonIcon} />
-                <Text style={styles.actionButtonText}>Quick Share</Text>
-              </TouchableOpacity>
+
             </View>
           </SafeAreaView>
         </Animated.View>
