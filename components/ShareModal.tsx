@@ -125,32 +125,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ visible, onClose, reelId }) => 
       },
     },
     {
-      id: 'facebook',
-      name: 'Feed de notícias',
-      icon: '📘',
-      color: '#1877F2',
-      onPress: () => {
-        Alert.alert('Facebook', 'Compartilhamento via Facebook em desenvolvimento.');
-        onClose();
-      },
-    },
-    {
       id: 'gmail',
       name: 'Gmail',
       icon: '📧',
       color: '#EA4335',
       onPress: () => {
         Alert.alert('Gmail', 'Compartilhamento via Gmail em desenvolvimento.');
-        onClose();
-      },
-    },
-    {
-      id: 'instagram',
-      name: 'Chat',
-      icon: '📷',
-      color: '#E4405F',
-      onPress: () => {
-        Alert.alert('Instagram', 'Compartilhamento via Instagram em desenvolvimento.');
         onClose();
       },
     },
