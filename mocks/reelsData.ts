@@ -71,6 +71,24 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Já sabia algumas coisas sobre isso, mas aprendi muito com essa aula.',
       date: '21 de novembro',
       likes: 2,
+      replies: [
+        {
+          id: 'r1',
+          username: 'animalrescuebrasil',
+          text: '@Jéssica Soares Que bom que foi útil! 😊',
+          date: '21 de novembro',
+          likes: 1,
+          parentId: 'c1',
+        },
+        {
+          id: 'r2',
+          username: 'Maria Santos',
+          text: '@Jéssica Soares Concordo totalmente!',
+          date: '21 de novembro',
+          likes: 0,
+          parentId: 'c1',
+        }
+      ],
     },
     {
       id: 'c2',
@@ -78,6 +96,16 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Fiquei com uma dúvida..',
       date: '21 de novembro',
       likes: 0,
+      replies: [
+        {
+          id: 'r3',
+          username: 'animalrescuebrasil',
+          text: '@André Lima Qual é sua dúvida? Posso ajudar!',
+          date: '21 de novembro',
+          likes: 2,
+          parentId: 'c2',
+        }
+      ],
     },
     {
       id: 'c3',
@@ -85,6 +113,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Conteúdo muito útil! Obrigada por compartilhar 🙏',
       date: '20 de novembro',
       likes: 5,
+      replies: [],
     },
   ],
   '2': [
@@ -94,6 +123,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Que fofo! Meu cachorro faz a mesma coisa 😍',
       date: '22 de novembro',
       likes: 8,
+      replies: [],
     },
     {
       id: 'c5',
@@ -101,6 +131,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Adorei o vídeo! Muito inspirador ❤️',
       date: '21 de novembro',
       likes: 3,
+      replies: [],
     },
   ],
   '3': [
@@ -110,6 +141,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Excelente dica! Como veterinário, confirmo a importância.',
       date: '23 de novembro',
       likes: 12,
+      replies: [],
     },
   ],
   '4': [
@@ -119,6 +151,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Acabamos de adotar um cachorrinho! Muito felizes 🐕',
       date: '22 de novembro',
       likes: 15,
+      replies: [],
     },
     {
       id: 'c8',
@@ -126,6 +159,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Trabalho incrível que vocês fazem! Parabéns 👏',
       date: '21 de novembro',
       likes: 7,
+      replies: [],
     },
   ],
   '5': [
@@ -135,6 +169,7 @@ export const commentsData: Record<string, Comment[]> = {
       text: 'Vou tentar essas dicas com meu Golden! Obrigada',
       date: '23 de novembro',
       likes: 4,
+      replies: [],
     },
   ],
 };

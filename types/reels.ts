@@ -18,6 +18,8 @@ export interface Comment {
   date: string;
   likes: number;
   avatar?: string;
+  replies?: Comment[];
+  parentId?: string;
 }
 
 export interface ReactionEmoji {

@@ -13,7 +13,7 @@ import {
   Platform,
   PanResponder,
 } from 'react-native';
-import { Heart, Send } from 'lucide-react-native';
+import { Heart, Send, MessageCircle } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Comment } from '@/types/reels';
 import { commentsData, reactionEmojis } from '@/mocks/reelsData';
@@ -29,9 +29,11 @@ interface CommentsModalProps {
 
 interface CommentItemProps {
   comment: Comment;
+  onReply: (commentId: string, username: string) => void;
+  level?: number;
 }
 
-const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
+const CommentItem: React.FC<CommentItemProps> = ({ comment, onReply, level = 0 }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(comment.likes);
 
@@ -74,7 +76,12 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
             />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.commentReplyButton} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.commentReplyButton} 
+            onPress={() => onReply(comment.id, comment.username)}
+            activeOpacity={0.7}
+          >
+            <MessageCircle size={12} color="#999" style={styles.replyIcon} />
             <Text style={styles.commentReplyText}>Responder</Text>
           </TouchableOpacity>
           
@@ -84,6 +91,20 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
             </Text>
           )}
         </View>
+        
+        {/* Render replies */}
+        {comment.replies && comment.replies.length > 0 && (
+          <View style={[styles.repliesContainer, level < 2 ? styles.repliesIndented : null]}>
+            {comment.replies.map((reply) => (
+              <CommentItem 
+                key={reply.id} 
+                comment={reply} 
+                onReply={onReply}
+                level={level + 1}
+              />
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -92,6 +113,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
 const CommentsModal: React.FC<CommentsModalProps> = ({ visible, onClose, reelId }) => {
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
   const slideAnim = useRef(new Animated.Value(MODAL_HEIGHT)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
   
@@ -152,21 +174,71 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ visible, onClose, reelId 
 
   const handleSendComment = () => {
     if (newComment.trim()) {
-      const comment: Comment = {
-        id: `c${Date.now()}`,
-        username: 'Você',
-        text: newComment.trim(),
-        date: 'Agora',
-        likes: 0,
-      };
-      
-      setComments(prev => [comment, ...prev]);
+      if (replyingTo) {
+        // Add reply to existing comment
+        const reply: Comment = {
+          id: `r${Date.now()}`,
+          username: 'Você',
+          text: newComment.trim(),
+          date: 'Agora',
+          likes: 0,
+          parentId: replyingTo.id,
+        };
+        
+        setComments(prev => 
+          prev.map(comment => {
+            if (comment.id === replyingTo.id) {
+              return {
+                ...comment,
+                replies: [...(comment.replies || []), reply]
+              };
+            }
+            // Check if it's a nested reply
+            if (comment.replies) {
+              const updatedReplies = comment.replies.map(nestedComment => {
+                if (nestedComment.id === replyingTo.id) {
+                  return {
+                    ...nestedComment,
+                    replies: [...(nestedComment.replies || []), reply]
+                  };
+                }
+                return nestedComment;
+              });
+              return { ...comment, replies: updatedReplies };
+            }
+            return comment;
+          })
+        );
+        setReplyingTo(null);
+      } else {
+        // Add new top-level comment
+        const comment: Comment = {
+          id: `c${Date.now()}`,
+          username: 'Você',
+          text: newComment.trim(),
+          date: 'Agora',
+          likes: 0,
+          replies: [],
+        };
+        
+        setComments(prev => [comment, ...prev]);
+      }
       setNewComment('');
     }
   };
 
   const handleEmojiPress = (emoji: string) => {
     setNewComment(prev => prev + emoji);
+  };
+
+  const handleReply = (commentId: string, username: string) => {
+    setReplyingTo({ id: commentId, username });
+    setNewComment(`@${username} `);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+    setNewComment('');
   };
 
   return (
@@ -212,7 +284,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ visible, onClose, reelId 
               <FlatList
                 data={comments}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <CommentItem comment={item} />}
+                renderItem={({ item }) => <CommentItem comment={item} onReply={handleReply} />}
                 style={styles.commentsList}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.commentsListContent}
@@ -238,6 +310,18 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ visible, onClose, reelId 
                 />
               </View>
               
+              {/* Reply indicator */}
+              {replyingTo && (
+                <View style={styles.replyIndicator}>
+                  <Text style={styles.replyIndicatorText}>
+                    Respondendo a @{replyingTo.username}
+                  </Text>
+                  <TouchableOpacity onPress={handleCancelReply} activeOpacity={0.7}>
+                    <Text style={styles.cancelReplyText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              
               {/* Input Area */}
               <View style={styles.inputContainer}>
                 <View style={styles.inputAvatar}>
@@ -246,7 +330,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ visible, onClose, reelId 
                 
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Escreva um comentário..."
+                  placeholder={replyingTo ? `Responder a @${replyingTo.username}...` : "Escreva um comentário..."}
                   placeholderTextColor="#999"
                   value={newComment}
                   onChangeText={setNewComment}
@@ -376,9 +460,6 @@ const styles = StyleSheet.create({
   commentLikeButton: {
     marginRight: 16,
   },
-  commentReplyButton: {
-    marginRight: 16,
-  },
   commentReplyText: {
     color: '#999',
     fontSize: 12,
@@ -437,6 +518,40 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     padding: 8,
+  },
+  repliesContainer: {
+    marginTop: 12,
+  },
+  repliesIndented: {
+    marginLeft: 44,
+  },
+  replyIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#2a2a2a',
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  replyIndicatorText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  cancelReplyText: {
+    color: '#ff3040',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  replyIcon: {
+    marginRight: 4,
+  },
+  commentReplyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
   },
 });
 
