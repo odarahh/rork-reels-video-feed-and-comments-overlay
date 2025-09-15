@@ -8,10 +8,11 @@ import {
   TouchableOpacity,
   Animated,
   Platform,
+  PanResponder,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Heart, MessageCircle, Share, Volume2, VolumeX } from 'lucide-react-native';
+import { Heart, MessageCircle, Share, Volume2, VolumeX, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { reelsData } from '@/mocks/reelsData';
@@ -26,11 +27,13 @@ interface VideoPlayerProps {
   isActive: boolean;
   volume: number;
   isMuted: boolean;
+  onTogglePlayPause: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive, volume, isMuted }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive, volume, isMuted, onTogglePlayPause }) => {
   const videoRef = useRef<Video>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   React.useEffect(() => {
     if (isActive && videoRef.current) {
@@ -38,17 +41,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive, volume, isMut
         // On web, don't autoplay until user interacts
         return;
       }
-      videoRef.current.playAsync().catch((error) => {
-        console.log('Video play failed:', error);
-      });
+      if (isPlaying) {
+        videoRef.current.playAsync().catch((error) => {
+          console.log('Video play failed:', error);
+        });
+      }
     } else if (!isActive && videoRef.current) {
       videoRef.current.pauseAsync().catch((error) => {
         console.log('Video pause failed:', error);
       });
     }
-  }, [isActive, hasUserInteracted]);
+  }, [isActive, hasUserInteracted, isPlaying]);
 
-  const handleVideoPress = () => {
+  const handleVideoPress = async () => {
     if (Platform.OS === 'web' && !hasUserInteracted) {
       setHasUserInteracted(true);
       if (videoRef.current && isActive) {
@@ -56,21 +61,41 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive, volume, isMut
           console.log('Video play failed:', error);
         });
       }
+      return;
+    }
+
+    // Toggle play/pause
+    if (videoRef.current) {
+      try {
+        if (isPlaying) {
+          await videoRef.current.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await videoRef.current.playAsync();
+          setIsPlaying(true);
+        }
+        onTogglePlayPause();
+      } catch (error) {
+        console.log('Video toggle failed:', error);
+      }
     }
   };
 
+  // Create PanResponder to handle video area touches only
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => false,
+    onPanResponderGrant: handleVideoPress,
+  });
+
   return (
-    <TouchableOpacity 
-      style={styles.video} 
-      onPress={handleVideoPress}
-      activeOpacity={1}
-    >
+    <View style={styles.video} {...panResponder.panHandlers}>
       <Video
         ref={videoRef}
         style={styles.video}
         source={{ uri: item.videoUrl }}
         resizeMode={ResizeMode.COVER}
-        shouldPlay={Platform.OS === 'web' ? (isActive && hasUserInteracted) : isActive}
+        shouldPlay={Platform.OS === 'web' ? (isActive && hasUserInteracted && isPlaying) : (isActive && isPlaying)}
         isLooping
         isMuted={Platform.OS === 'web' ? true : isMuted}
         volume={volume}
@@ -83,7 +108,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ item, isActive, volume, isMut
           <Text style={styles.playPromptText}>Toque para reproduzir</Text>
         </View>
       )}
-    </TouchableOpacity>
+      {!isPlaying && isActive && hasUserInteracted && (
+        <View style={styles.pauseOverlay}>
+          <View style={styles.pauseIcon}>
+            <Text style={styles.pauseIconText}>▶</Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 };
 
@@ -117,9 +149,13 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
   const [likeCount, setLikeCount] = useState(item.likes);
   const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [descriptionHeight, setDescriptionHeight] = useState(0);
+  const [shouldShowExpandButton, setShouldShowExpandButton] = useState(false);
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
   const volumeSliderAnim = useRef(new Animated.Value(0)).current;
   const volumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const descriptionAnimHeight = useRef(new Animated.Value(60)).current;
 
   const createFloatingHeart = useCallback(() => {
     const heartId = Date.now().toString();
@@ -216,6 +252,26 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
       });
     }, 3000);
   }, [onVolumeChange, volumeSliderAnim]);
+
+  // Handle description expansion animation
+  const toggleDescription = useCallback(() => {
+    const newExpandedState = !isDescriptionExpanded;
+    setIsDescriptionExpanded(newExpandedState);
+    
+    Animated.timing(descriptionAnimHeight, {
+      toValue: newExpandedState ? Math.max(descriptionHeight, 60) : 60,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isDescriptionExpanded, descriptionHeight, descriptionAnimHeight]);
+
+  const onDescriptionLayout = useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 60 && !shouldShowExpandButton) {
+      setShouldShowExpandButton(true);
+      setDescriptionHeight(height);
+    }
+  }, [shouldShowExpandButton]);
 
   // Cleanup timeout on unmount
   React.useEffect(() => {
@@ -355,9 +411,34 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
 
           </View>
           
-          <Text style={styles.description} numberOfLines={3}>
-            {item.description}
-          </Text>
+          <View style={styles.descriptionContainer}>
+            <Animated.View style={[styles.descriptionWrapper, { height: descriptionAnimHeight }]}>
+              <Text 
+                style={styles.description}
+                numberOfLines={isDescriptionExpanded ? undefined : 3}
+                onLayout={onDescriptionLayout}
+              >
+                {item.description}
+              </Text>
+            </Animated.View>
+            
+            {shouldShowExpandButton && (
+              <TouchableOpacity 
+                style={styles.expandButton} 
+                onPress={toggleDescription}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.expandButtonText}>
+                  {isDescriptionExpanded ? 'menos' : 'mais'}
+                </Text>
+                {isDescriptionExpanded ? (
+                  <ChevronUp size={16} color="white" />
+                ) : (
+                  <ChevronDown size={16} color="white" />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
           
           <View style={styles.metadata}>
             <Text style={styles.views}>{item.views} visualizações</Text>
@@ -453,6 +534,7 @@ const ReelsScreen: React.FC = () => {
               isActive={index === currentIndex}
               volume={volume}
               isMuted={isMuted}
+              onTogglePlayPause={() => {}}
             />
             <ReelOverlay 
               item={item} 
@@ -611,11 +693,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  descriptionContainer: {
+    marginBottom: 8,
+  },
+  descriptionWrapper: {
+    overflow: 'hidden',
+  },
   description: {
     color: 'white',
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 8,
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  expandButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 4,
   },
   metadata: {
     flexDirection: 'row',
@@ -658,6 +757,29 @@ const styles = StyleSheet.create({
   volumeSlider: {
     width: 100,
     height: 20,
+  },
+  pauseOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  pauseIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pauseIconText: {
+    fontSize: 32,
+    color: '#000',
+    marginLeft: 4,
   },
 
 });
