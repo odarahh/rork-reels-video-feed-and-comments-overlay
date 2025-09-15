@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   heartButton: {
     alignItems: 'center',
