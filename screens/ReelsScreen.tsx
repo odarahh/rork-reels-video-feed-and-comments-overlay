@@ -415,7 +415,7 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
             <Animated.View style={[styles.descriptionWrapper, { height: descriptionAnimHeight }]}>
               <Text 
                 style={styles.description}
-                numberOfLines={isDescriptionExpanded ? undefined : 3}
+                numberOfLines={isDescriptionExpanded ? undefined : 4}
                 onLayout={onDescriptionLayout}
               >
                 {item.description}
