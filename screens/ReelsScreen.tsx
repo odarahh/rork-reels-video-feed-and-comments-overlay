@@ -208,22 +208,34 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
       return;
     }
     
-    setShowVolumeSlider(true);
+    const newShowState = !showVolumeSlider;
+    setShowVolumeSlider(newShowState);
     
     // Clear existing timeout
     if (volumeTimeoutRef.current) {
       clearTimeout(volumeTimeoutRef.current);
     }
     
-    // Animate slider in
-    Animated.timing(volumeSliderAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-    
-    // Hide slider after 3 seconds of inactivity
-    volumeTimeoutRef.current = setTimeout(() => {
+    if (newShowState) {
+      // Animate slider in
+      Animated.timing(volumeSliderAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+      
+      // Hide slider after 4 seconds of inactivity
+      volumeTimeoutRef.current = setTimeout(() => {
+        Animated.timing(volumeSliderAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowVolumeSlider(false);
+        });
+      }, 4000);
+    } else {
+      // Animate slider out immediately
       Animated.timing(volumeSliderAnim, {
         toValue: 0,
         duration: 200,
@@ -231,8 +243,8 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
       }).start(() => {
         setShowVolumeSlider(false);
       });
-    }, 3000);
-  }, [onToggleMute, volumeSliderAnim]);
+    }
+  }, [onToggleMute, volumeSliderAnim, showVolumeSlider]);
 
   const handleSliderChange = useCallback((value: number) => {
     onVolumeChange(value);
@@ -250,7 +262,7 @@ const ReelOverlay: React.FC<ReelOverlayProps> = ({
       }).start(() => {
         setShowVolumeSlider(false);
       });
-    }, 3000);
+    }, 4000);
   }, [onVolumeChange, volumeSliderAnim]);
 
   // Handle description expansion animation
@@ -740,23 +752,39 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   volumeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   volumeSliderContainer: {
     marginLeft: 12,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   volumeSlider: {
-    width: 100,
-    height: 20,
+    width: 120,
+    height: 24,
   },
   pauseOverlay: {
     position: 'absolute',
