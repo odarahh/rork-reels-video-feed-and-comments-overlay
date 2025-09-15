@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 16,
-    bottom: 120,
+    bottom: 200,
     alignItems: 'center',
   },
   likeButtonContainer: {
