@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   likeButtonContainer: {
     position: 'relative',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   actionButton: {
     alignItems: 'center',
